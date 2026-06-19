@@ -1,0 +1,20 @@
+name: 🐞 Bug report
+description: Found something broken? Tell us and we'll fix it live.
+title: "[Bug]: "
+labels: ["bug", "live-demo"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What's broken?
+      description: What happened, and what did you expect instead?
+      placeholder: "Running `foo --bar` crashes with an error."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce (optional)
+      description: How can we trigger it?
+    validations:
+      required: false

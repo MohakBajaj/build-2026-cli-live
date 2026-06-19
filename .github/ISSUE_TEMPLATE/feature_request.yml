@@ -1,0 +1,24 @@
+name: ✨ Feature request
+description: Tell us what to build live on stage. The wilder the better.
+title: "[Feature]: "
+labels: ["enhancement", "live-demo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping build the demo! Keep it clear and we'll pick it up live.
+  - type: textarea
+    id: what
+    attributes:
+      label: What should we build?
+      description: Describe the feature in a sentence or two.
+      placeholder: "Add a command that turns any text into ASCII art."
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Any details? (optional)
+      description: Inputs, outputs, edge cases, or how you'd expect it to behave.
+    validations:
+      required: false
