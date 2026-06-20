@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Halluci-Wiki — The Free Encyclopedia of Pure Fiction</title>
+    <meta
+      name="description"
+      content="Halluci-Wiki generates totally hallucinated, gloriously inaccurate encyclopedia articles for any query. Satire. Nothing here is true."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">
+        <div class="globe" aria-hidden="true">🌀</div>
+        <div class="brand-text">
+          <h1>Halluci-Wiki</h1>
+          <p class="tagline">The Free Encyclopedia of Pure Fiction</p>
+        </div>
+      </div>
+      <form id="search-form" class="search" role="search">
+        <input
+          id="search-input"
+          type="text"
+          name="q"
+          placeholder="Search anything… it's all made up anyway"
+          autocomplete="off"
+          aria-label="Search Halluci-Wiki"
+        />
+        <button type="submit">Hallucinate</button>
+        <button type="button" id="random-btn" title="Random article">🎲</button>
+      </form>
+    </header>
+
+    <div class="disclaimer" role="note">
+      ⚠️ <strong>Satire warning:</strong> Every article on Halluci-Wiki is
+      randomly generated nonsense. Nothing here is real, accurate, or remotely
+      true. Do not cite this in your homework.
+    </div>
+
+    <main id="article" class="article" aria-live="polite">
+      <!-- Article rendered here by app.js -->
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Halluci-Wiki is a parody project built live for the Build 2026 talk
+        <em>“From CLI to PR.”</em> Content is procedurally generated fiction.
+      </p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
