@@ -1,0 +1,122 @@
+name: PR Review Agent
+
+# Reviews a pull request as soon as it opens and pings the maintainer.
+# Implements issue #3: "Build an agent which reviews a PR as soon as it opens and Ping me".
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review-and-ping:
+    name: Review PR and ping maintainer
+    runs-on: ubuntu-latest
+    # Skip drafts unless they are explicitly marked ready for review.
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Determine who to ping
+        id: ping
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          CONFIGURED_USER: ${{ vars.PR_PING_USERNAME }}
+        run: |
+          # Use the PR_PING_USERNAME repository variable if set, otherwise the repo owner.
+          PING_USER="${CONFIGURED_USER:-$REPO_OWNER}"
+          echo "user=${PING_USER}" >> "$GITHUB_OUTPUT"
+          echo "Will ping: @${PING_USER}"
+
+      - name: Request Copilot code review
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Best-effort: ask GitHub Copilot to review the PR. This requires Copilot
+          # code review to be enabled for the repository; if unavailable the step
+          # is skipped without failing the workflow.
+          echo "Requesting Copilot review on PR #${PR_NUMBER}..."
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${REPO}/pulls/${PR_NUMBER}/requested_reviewers" \
+            -f "reviewers[]=copilot-pull-request-reviewer[bot]" \
+            && echo "Copilot review requested." \
+            || echo "Copilot review could not be requested (feature may be disabled). Continuing."
+
+      - name: Build review summary
+        id: summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Gather PR statistics for a lightweight automated review.
+          PR_JSON=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}")
+          ADDITIONS=$(echo "$PR_JSON" | jq -r '.additions')
+          DELETIONS=$(echo "$PR_JSON" | jq -r '.deletions')
+          CHANGED=$(echo "$PR_JSON" | jq -r '.changed_files')
+
+          FILES=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files" \
+            | jq -r '.[].filename' | sed 's/^/- `/; s/$/`/' | head -50)
+
+          {
+            echo "additions=${ADDITIONS}"
+            echo "deletions=${DELETIONS}"
+            echo "changed=${CHANGED}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "files<<FILES_EOF"
+            echo "$FILES"
+            echo "FILES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post review ping comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PING_USER: ${{ steps.ping.outputs.user }}
+          ADDITIONS: ${{ steps.summary.outputs.additions }}
+          DELETIONS: ${{ steps.summary.outputs.deletions }}
+          CHANGED: ${{ steps.summary.outputs.changed }}
+          FILES: ${{ steps.summary.outputs.files }}
+        run: |
+          set -euo pipefail
+          BODY=$(cat <<EOF
+          👋 Hey @${PING_USER}, a pull request just opened and is ready for your review.
+
+          **PR #${PR_NUMBER}: ${PR_TITLE}**
+          Opened by @${PR_AUTHOR}
+
+          ### 🔍 Automated review summary
+          | Metric | Value |
+          | --- | --- |
+          | Files changed | ${CHANGED} |
+          | Additions | +${ADDITIONS} |
+          | Deletions | -${DELETIONS} |
+
+          **Changed files**
+          ${FILES}
+
+          ### ✅ Review checklist
+          - [ ] Changes match the linked issue / intent
+          - [ ] Tests added or updated where needed
+          - [ ] No secrets, credentials, or debug code committed
+          - [ ] Docs updated if behavior changed
+
+          _A Copilot code review has also been requested (if enabled for this repo)._
+
+          ---
+          🤖 Posted automatically by the **PR Review Agent**.
+          EOF
+          )
+          gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+          echo "Ping comment posted for @${PING_USER}."
